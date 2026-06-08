@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AetherFlow AI - Generative Art Studio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbars - Sleek Apple Style */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 99px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Apple Range Slider Customizing */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: rgba(255, 255, 255, 0.1);
+            height: 3px;
+            border-radius: 99px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: -5px; /* Centers thumb on the track */
+            background-color: #ffffff;
+            height: 13px;
+            width: 13px;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            transition: transform 0.1s ease;
+        }
+        input[type="range"]:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+        }
+
+        /* Virtual Fullscreen fallback positioning */
+        .virtual-fullscreen-active {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999 !important;
+            border-radius: 0px !important;
+            border: none !important;
+            background: #000000 !important;
+        }
+
+        .transition-all-custom {
+            transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+    </style>
+</head>
+<body class="bg-[#000000] text-[#f5f5f7] font-sans min-h-screen flex flex-col overflow-hidden select-none antialiased">
+
+    <!-- Minimal Apple-Style Header -->
+    <header class="border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-md px-8 py-3.5 flex items-center justify-between z-10 shrink-0">
+        <div class="flex items-center space-x-3.5">
+            <div class="w-2.5 h-2.5 rounded-full bg-zinc-300"></div>
+            <div>
+                <h1 class="text-sm font-semibold tracking-tight text-white uppercase">AetherFlow Studio</h1>
+                <p class="text-[10px] text-zinc-500 font-medium">Kinetic Type & Generative Canvas</p>
+            </div>
+        </div>
+
+        <!-- Minimal Navigation Panel -->
+        <div class="flex items-center space-x-2">
+            <!-- Sidebar toggle -->
+            <button id="btnToggleSidebar" class="px-3.5 py-1.5 rounded-full bg-zinc-900 border border-zinc-800/80 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-300 transition-all-custom flex items-center space-x-2" title="Toggle Controls Deck View">
+                <i class="fa-solid fa-bars-staggered text-xs" id="sidebarToggleIcon"></i>
+                <span class="text-[10px] font-medium" id="sidebarToggleText">Hide Panel</span>
+            </button>
+
+            <!-- Audio reactivity toggle -->
+            <button id="btnAudio" class="px-3.5 py-1.5 rounded-full bg-zinc-900 border border-zinc-800/80 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white transition-all-custom flex items-center space-x-2" title="Audio Reactive Mic Mode">
+                <i class="fa-solid fa-microphone-slash text-zinc-500" id="audioIcon"></i>
+                <span class="text-[10px] font-medium" id="audioText">Mic: Off</span>
+            </button>
+
+            <!-- Snapshot -->
+            <button id="btnSnapshot" class="p-2 rounded-full bg-zinc-900 border border-zinc-800/80 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-300 transition-all-custom" title="Capture PNG">
+                <i class="fa-solid fa-camera text-xs"></i>
+            </button>
+
+            <!-- Video Record -->
+            <button id="btnRecord" class="px-3.5 py-1.5 rounded-full bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 hover:bg-white hover:text-black transition-all-custom flex items-center space-x-2" title="Record Output">
+                <span class="relative flex h-1.5 w-1.5" id="recordIndicator" style="display: none;">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
+                </span>
+                <i class="fa-solid fa-circle text-[8px] text-zinc-400" id="recordIcon"></i>
+                <span class="text-[10px] font-medium" id="recordText">Record</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Workspace -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+        <!-- Left Column: Control Sidebar (Sleek minimalist panel) -->
+        <aside id="controlSidebar" class="w-full lg:w-[380px] bg-zinc-950/40 border-t lg:border-t-0 lg:border-r border-zinc-900 flex flex-col shrink-0 overflow-y-auto max-h-[50vh] lg:max-h-none z-10 transition-all-custom">
+            
+            <!-- Tab Headers -->
+            <div class="flex border-b border-zinc-900 shrink-0 bg-zinc-950/40 sticky top-0 z-20">
+                <button id="tabManual" class="flex-1 py-3 px-4 text-[10px] font-semibold uppercase tracking-widest border-b border-white text-white transition-all-custom flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-sliders text-[9px]"></i>
+                    <span>Controls</span>
+                </button>
+                <button id="tabAI" class="flex-1 py-3 px-4 text-[10px] font-semibold uppercase tracking-widest border-b border-transparent text-zinc-500 hover:text-zinc-300 transition-all-custom flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-circle-nodes text-[9px]"></i>
+                    <span>AI Engine</span>
+                </button>
+            </div>
+
+            <!-- Tab Content: Manual Deck -->
+            <div id="panelManual" class="p-6 flex-1 flex flex-col space-y-6">
+                
+                <!-- CUSTOM USER TEXT ENGINE -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                            Typography Input
+                        </label>
+                    </div>
+                    
+                    <div>
+                        <input id="userTextInput" type="text" value="AETHER" 
+                            class="w-full bg-zinc-900/60 border border-zinc-800/80 focus:border-zinc-600 rounded-lg px-3.5 py-2 text-xs text-white placeholder-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-800 font-medium tracking-wide transition-all"
+                            placeholder="Your custom text...">
+                    </div>
+
+                    <!-- Typography Settings -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[9px] font-semibold text-zinc-500 uppercase mb-1">Font Family</label>
+                            <select id="userTextFont" class="w-full bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 rounded-lg p-2 text-[10px] text-zinc-200 focus:outline-none">
+                                <option value="sans">Modern Sans</option>
+                                <option value="cinzel">Cinzel Serif</option>
+                                <option value="orbitron">Orbitron Cyber</option>
+                                <option value="mono">Fira Monospace</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-semibold text-zinc-500 uppercase mb-1">Movement Behavior</label>
+                            <select id="userTextBehavior" class="w-full bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 rounded-lg p-2 text-[10px] text-zinc-200 focus:outline-none">
+                                <option value="magnet">Gravity Attraction</option>
+                                <option value="flow">Flow Field Wave</option>
+                                <option value="vortex">Orbiting Vortex</option>
+                                <option value="chaos">Chaos Disperse</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Font Upload UI -->
+                    <div class="pt-1">
+                        <label class="w-full bg-zinc-900/30 border border-zinc-800/80 border-dashed hover:border-zinc-600 rounded-lg px-3 py-2 text-[10px] text-zinc-400 hover:text-zinc-200 transition-all-custom cursor-pointer flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-file-arrow-up text-[10px]"></i>
+                            <span id="fontUploadBtnText" class="font-medium truncate">Upload Custom Font (.ttf / .otf)</span>
+                            <input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2" class="hidden">
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[9px] font-semibold text-zinc-500 uppercase mb-1">Scale Factor</label>
+                            <input type="range" id="textScale" min="0.4" max="1.6" step="0.1" value="1.0" class="w-full">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-semibold text-zinc-500 uppercase mb-1">Scan Precision</label>
+                            <select id="spawnPrecision" class="w-full bg-zinc-900/60 border border-zinc-800/80 rounded-lg p-1.5 text-[9px] text-zinc-300 focus:outline-none">
+                                <option value="low">Sparse</option>
+                                <option value="medium" selected>Normal</option>
+                                <option value="high">Dense</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PHYSICS & FLOW FIELD SLIDERS -->
+                <div class="space-y-4 pt-2 border-t border-zinc-900">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Physics Controls</h4>
+                    
+                    <!-- Density Slider -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1">
+                            <span class="text-zinc-500">Density</span>
+                            <span class="text-zinc-300 font-mono" id="lblCount">1500</span>
+                        </div>
+                        <input type="range" id="paramCount" min="200" max="4000" step="100" value="1500" class="w-full">
+                    </div>
+
+                    <!-- Flow field Speed -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1">
+                            <span class="text-zinc-500">Kinetics Speed</span>
+                            <span class="text-zinc-300 font-mono" id="lblSpeed">1.2x</span>
+                        </div>
+                        <input type="range" id="paramSpeed" min="0.1" max="4" step="0.1" value="1.2" class="w-full">
+                    </div>
+
+                    <!-- Attraction Strength -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1">
+                            <span class="text-zinc-500">Gravity Magnet</span>
+                            <span class="text-zinc-300 font-mono" id="lblForce">1.5</span>
+                        </div>
+                        <input type="range" id="paramForce" min="0.1" max="5.0" step="0.1" value="1.5" class="w-full">
+                    </div>
+
+                    <!-- Deflection Radius -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1">
+                            <span class="text-zinc-500">Interaction Zone</span>
+                            <span class="text-zinc-300 font-mono" id="lblDeflect">120px</span>
+                        </div>
+                        <input type="range" id="paramDeflect" min="30" max="300" step="10" value="120" class="w-full">
+                    </div>
+                </div>
+
+                <!-- VISUAL & STYLE PANEL -->
+                <div class="space-y-4 pt-2 border-t border-zinc-900">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Aesthetics & Mirroring</h4>
+
+                    <!-- Color Palettes -->
+                    <div>
+                        <label class="block text-[9px] text-zinc-500 uppercase mb-1.5">Color Palette Core</label>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <button class="palette-btn py-1.5 px-2.5 rounded-lg text-[10px] font-medium border border-white bg-zinc-900 text-white text-left flex items-center space-x-2" data-palette="white">
+                                <span class="flex space-x-0.5"><span class="w-1.5 h-1.5 rounded-full bg-white"></span></span>
+                                <span>Pure White</span>
+                            </button>
+                            <button class="palette-btn py-1.5 px-2.5 rounded-lg text-[10px] font-medium border border-zinc-800 bg-transparent hover:border-zinc-700 text-zinc-400 text-left flex items-center space-x-2" data-palette="neon">
+                                <span class="flex space-x-0.5"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span></span>
+                                <span>Neon Genesis</span>
+                            </button>
+                            <button class="palette-btn py-1.5 px-2.5 rounded-lg text-[10px] font-medium border border-zinc-800 bg-transparent hover:border-zinc-700 text-zinc-400 text-left flex items-center space-x-2" data-palette="gold">
+                                <span class="flex space-x-0.5"><span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span></span>
+                                <span>Aura Gold</span>
+                            </button>
+                            <button class="palette-btn py-1.5 px-2.5 rounded-lg text-[10px] font-medium border border-zinc-800 bg-transparent hover:border-zinc-700 text-zinc-400 text-left flex items-center space-x-2" data-palette="matrix">
+                                <span class="flex space-x-0.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span></span>
+                                <span>Matrix Rain</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Shape, Blend mode and Trail intensity -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[9px] font-semibold text-zinc-500 uppercase mb-1">Particle Shape</label>
+                            <select id="particleShape" class="w-full bg-zinc-900/60 border border-zinc-800/80 rounded-lg p-1.5 text-[10px] text-zinc-300 focus:outline-none">
+                                <option value="letter" selected>Letter (Typo)</option>
+                                <option value="circle">Circle</option>
+                                <option value="square">Square</option>
+                                <option value="triangle">Triangle</option>
+                                <option value="star">Star</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-semibold text-zinc-500 uppercase mb-1">Trace Mode</label>
+                            <select id="canvasBlend" class="w-full bg-zinc-900/60 border border-zinc-800/80 rounded-lg p-1.5 text-[10px] text-zinc-300 focus:outline-none">
+                                <option value="source-over" selected>Standard (Sharp)</option>
+                                <option value="screen">Screen (Light Blur)</option>
+                                <option value="lighter">Lighter (Additive)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="col-span-2">
+                            <label class="block text-[9px] font-semibold text-zinc-500 uppercase mb-1">Motion Trail Decay</label>
+                            <select id="trailDecay" class="w-full bg-zinc-900/60 border border-zinc-800/80 rounded-lg p-1.5 text-[10px] text-zinc-300 focus:outline-none">
+                                <option value="0.05">Ultra Long Trails</option>
+                                <option value="0.15" selected>Normal Decay</option>
+                                <option value="0.4">Minimal Trails</option>
+                                <option value="1.0">No Trails (Instant Matte)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Symmetry Multiplier / Kaleidoscope -->
+                    <div>
+                        <div class="flex justify-between text-[10px] mb-1.5">
+                            <span class="text-zinc-500">Symmetry Axes</span>
+                            <span class="text-zinc-400 font-mono font-medium" id="lblSymmetry">None</span>
+                        </div>
+                        <div class="grid grid-cols-4 gap-1.5">
+                            <button class="sym-btn py-1 px-1.5 rounded-full text-[9px] bg-zinc-200 text-black font-semibold" data-sym="1">None</button>
+                            <button class="sym-btn py-1 px-1.5 rounded-full text-[9px] bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-800" data-sym="2">2x</button>
+                            <button class="sym-btn py-1 px-1.5 rounded-full text-[9px] bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-800" data-sym="4">4x</button>
+                            <button class="sym-btn py-1 px-1.5 rounded-full text-[9px] bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-800" data-sym="8">8x</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Tab Content: AI prompt & script creator -->
+            <div id="panelAI" class="p-6 flex-1 flex flex-col space-y-4 hidden-panel hidden">
+                
+                <div class="bg-zinc-900/40 border border-zinc-800 p-4 rounded-xl space-y-1.5">
+                    <h3 class="text-[10px] font-bold text-white uppercase flex items-center space-x-1.5">
+                        <i class="fa-solid fa-brain"></i>
+                        <span>Generative Prompt</span>
+                    </h3>
+                    <p class="text-[10px] text-zinc-500 leading-normal">
+                        Type any spatial simulation or mathematical prompt. The integrated core writes and compiles optimized physics formulas instantly.
+                    </p>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Describe Pattern Behavior</label>
+                    <textarea id="promptInput" rows="4" 
+                        class="w-full bg-zinc-900/60 border border-zinc-800 focus:border-zinc-700 rounded-xl px-3 py-2.5 text-xs text-white placeholder-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-800 font-medium"
+                        placeholder="e.g., a galactic spiral revolving around custom vectors, exploding outwards on voice amplitude..."></textarea>
+                </div>
+
+                <!-- Suggested Quick Prompts -->
+                <div class="space-y-1.5">
+                    <span class="block text-[9px] font-semibold uppercase tracking-wider text-zinc-600">Preset Ideas</span>
+                    <div class="flex flex-wrap gap-1">
+                        <button class="quick-prompt-btn text-[9px] bg-zinc-900 hover:bg-zinc-800 border border-zinc-800/80 px-2 py-1 rounded-full text-zinc-300 transition-all-custom">
+                            Planetary Ring Vortex
+                        </button>
+                        <button class="quick-prompt-btn text-[9px] bg-zinc-900 hover:bg-zinc-800 border border-zinc-800/80 px-2 py-1 rounded-full text-zinc-300 transition-all-custom">
+                            Digital Rain Drop
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Custom API Key Support -->
+                <div class="bg-zinc-900/40 p-3 rounded-lg border border-zinc-800/80 space-y-1">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-[9px] font-semibold text-zinc-500 uppercase">Gemini Custom Key</label>
+                        <span class="text-[8px] text-zinc-600">Blank uses platform core</span>
+                    </div>
+                    <input id="apiKeyInput" type="password" 
+                        class="w-full bg-zinc-950 border border-zinc-800/80 rounded px-2.5 py-1.5 text-[10px] text-zinc-200 placeholder-zinc-800 focus:outline-none"
+                        placeholder="Optional API key">
+                </div>
+
+                <!-- Generate Trigger Button -->
+                <button id="btnGenerate" class="w-full py-2.5 px-4 bg-white hover:bg-zinc-200 text-black rounded-full font-semibold text-[10px] uppercase tracking-widest transition-all-custom flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-[10px]" id="genIcon"></i>
+                    <span id="genText">Generate Pattern</span>
+                </button>
+
+                <!-- Generation Code Display -->
+                <div id="aiFeedback" class="hidden border border-zinc-900 bg-zinc-950 rounded-xl p-3.5 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[9px] text-zinc-400 font-semibold uppercase tracking-wider flex items-center space-x-1">
+                            <i class="fa-solid fa-code text-[9px]"></i>
+                            <span>Compiled Logic</span>
+                        </span>
+                        <span class="text-[8px] text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded-full">Compiled</span>
+                    </div>
+                    <pre class="bg-zinc-900 p-2.5 rounded-lg text-[9px] font-mono text-zinc-500 overflow-x-auto max-h-[100px]" id="compiledCodeBlock">// AI pattern active</pre>
+                </div>
+            </div>
+
+            <!-- Footer info inside Sidebar -->
+            <div class="mt-auto border-t border-zinc-900 p-5 bg-zinc-950/40 text-[9px] text-zinc-600 leading-normal text-center">
+                Sleek monochrome vector laboratory. Mouse Left Click: Explode / Scatter. Touch compatible.
+            </div>
+        </aside>
+
+        <!-- Right Column: Visual Canvas Area -->
+        <main class="flex-1 flex flex-col items-center justify-center p-4 bg-black relative overflow-hidden group transition-all-custom">
+            <!-- Canvas Container -->
+            <div id="canvasContainer" class="w-full h-full rounded-2xl border border-zinc-900 bg-zinc-950/20 overflow-hidden relative shadow-2xl flex items-center justify-center transition-all-custom">
+                <!-- Canvas -->
+                <canvas id="generativeCanvas" class="w-full h-full block cursor-crosshair transition-all duration-300"></canvas>
+
+                <!-- Toast / Notice banner -->
+                <div id="toastMessage" class="absolute top-16 left-1/2 -translate-x-1/2 bg-white text-black px-4 py-1.5 rounded-full text-[10px] font-semibold shadow-2xl opacity-0 pointer-events-none transition-all-custom translate-y-2 flex items-center space-x-2 z-50">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span id="toastText">Setting updated</span>
+                </div>
+
+                <!-- Status Overlay (Active Presets / Custom script tag) -->
+                <div class="absolute bottom-4 left-4 bg-zinc-950/90 border border-zinc-900 px-4 py-3 rounded-xl backdrop-blur-md max-w-[320px] pointer-events-none transition-all duration-300 opacity-90 group-hover:opacity-100 shadow-xl">
+                    <p class="text-[9px] text-zinc-500 font-semibold uppercase tracking-widest" id="statusCategory">Active Pattern</p>
+                    <h3 class="text-xs font-semibold text-white truncate mt-0.5" id="statusTitle">Ethereal Typography Flow</h3>
+                    <p class="text-[10px] text-zinc-500 mt-0.5 line-clamp-2 leading-relaxed" id="statusDesc">Custom typography scanning text coordinates dynamically in Matte White vectors.</p>
+                </div>
+
+                <!-- Live FPS & Counter -->
+                <div class="absolute top-4 right-4 bg-zinc-950/80 border border-zinc-900 px-3 py-1.5 rounded-full text-[9px] font-mono tracking-wider text-zinc-500 flex items-center space-x-3 backdrop-blur">
+                    <div>FPS: <span id="fpsCounter" class="text-white font-semibold">60</span></div>
+                    <div class="border-l border-zinc-800 pl-3">Count: <span id="particleCounter" class="text-white font-semibold">1,500</span></div>
+                </div>
+
+                <!-- Floating Canvas Toolbar (Minimalist Pill Shape) -->
+                <div class="absolute top-4 left-4 flex bg-zinc-950/90 border border-zinc-900 rounded-full p-1 shadow-lg backdrop-blur space-x-1">
+                    <button id="btnPlayPause" class="w-8 h-8 rounded-full hover:bg-zinc-900 hover:text-white text-zinc-400 transition-all flex items-center justify-center" title="Pause / Play Frame loop">
+                        <i class="fa-solid fa-pause text-[10px]" id="playPauseIcon"></i>
+                    </button>
+                    <button id="btnClearCanvas" class="w-8 h-8 rounded-full hover:bg-zinc-900 hover:text-white text-zinc-400 transition-all flex items-center justify-center" title="Clear Canvas Trace">
+                        <i class="fa-solid fa-trash-can text-[10px]"></i>
+                    </button>
+                    <button id="btnResetPhysics" class="w-8 h-8 rounded-full hover:bg-zinc-900 hover:text-white text-zinc-400 transition-all flex items-center justify-center" title="Scatter Particles">
+                        <i class="fa-solid fa-burst text-[10px]"></i>
+                    </button>
+                    <!-- Floating Fullscreen Canvas Selector (Apple Presentation Mode Toggle) -->
+                    <button id="btnToggleFull" class="w-8 h-8 rounded-full hover:bg-zinc-900 hover:text-white text-zinc-400 transition-all flex items-center justify-center border border-transparent hover:border-zinc-800" title="Toggle Display Fullscreen">
+                        <i class="fa-solid fa-expand text-[10px]" id="fullIcon"></i>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Hidden Canvas used for text pixel rasterization -->
+    <canvas id="textHiddenCanvas" class="hidden" style="display:none;"></canvas>
+
+    <!-- Script Entry -->
+    <script>
+        // Global variables for generative system
+        const canvas = document.getElementById('generativeCanvas');
+        const ctx = canvas.getContext('2d');
+        const textHiddenCanvas = document.getElementById('textHiddenCanvas');
+        const hiddenCtx = textHiddenCanvas.getContext('2d');
+
+        // Layout state
+        let isPlaying = true;
+        let scaleFactor = 1.0;
+        let lastTime = 0;
+        let fps = 60;
+        let activeSymmetry = 1; // 1 = None, 2 = 2x, etc.
+        let colorPalette = 'white'; // White is default!
+        let customBehavior = 'magnet'; // magnet, flow, vortex, chaos
+        let isVirtualFullscreen = false; // Virtual CSS fullscreen toggle status
+        let isSidebarCollapsed = false; // Sidebar collapse layout tracking
+        let dpr = window.devicePixelRatio || 1; // Device Pixel Ratio for absolute crispness
+        
+        // Logical layout bounds (DPI-independent)
+        let logicalWidth = 800;
+        let logicalHeight = 600;
+
+        // Media recording systems
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        // Sound analysis systems
+        let audioContext = null;
+        let audioAnalyser = null;
+        let microphoneSource = null;
+        let isAudioReactive = false;
+        let audioFrequencyData = new Uint8Array(0);
+        let audioVolume = 0;
+
+        // Color maps configuration
+        const palettes = {
+            white: ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'],
+            neon: ['#22d3ee', '#818cf8', '#ec4899', '#c084fc', '#f43f5e'],
+            gold: ['#f59e0b', '#d97706', '#fef08a', '#b45309', '#fbfbfb'],
+            matrix: ['#10b981', '#34d399', '#064e3b', '#6ee7b7', '#059669'],
+            sunset: ['#f97316', '#ef4444', '#facc15', '#b91c1c', '#f59e0b']
+        };
+
+        // Text Raster Targets Array
+        let textTargets = [];
+        let particles = [];
+        let particleCount = 1500;
+        let flowSpeed = 1.2;
+        let attractionForce = 1.5;
+        let deflectionRadius = 120;
+        let trailDecay = 0.15;
+        let noiseFieldTime = 0;
+
+        // Mouse inputs
+        let mouseX = -9999;
+        let mouseY = -9999;
+        let mouseActive = false;
+        let clickBurstActive = false;
+        let scatterTimer = 0;
+
+        // Custom AI Particle Dynamics parameters
+        let aiPhysicsOverride = null;
+
+        function getRandomCharFromInput() {
+            const textVal = document.getElementById('userTextInput').value || "AETHER";
+            return textVal[Math.floor(Math.random() * textVal.length)] || "A";
+        }
+
+        function initCanvasSize() {
+            const container = document.getElementById('canvasContainer');
+            
+            let finalWidth = container.clientWidth;
+            let finalHeight = container.clientHeight;
+            
+            // Handle virtual fullscreen layout dimensions smoothly
+            if (isVirtualFullscreen) {
+                finalWidth = window.innerWidth;
+                finalHeight = window.innerHeight;
+            } else {
+                if (!finalWidth || finalWidth <= 0) {
+                    finalWidth = window.innerWidth > 1024 ? (window.innerWidth - (isSidebarCollapsed ? 0 : 380)) : window.innerWidth;
+                }
+                if (!finalHeight || finalHeight <= 0) {
+                    finalHeight = window.innerHeight * 0.6;
+                }
+            }
+
+            logicalWidth = Math.max(100, Math.floor(finalWidth));
+            logicalHeight = Math.max(100, Math.floor(finalHeight));
+
+            dpr = window.devicePixelRatio || 1;
+            
+            // Scale canvas element size for sharp rendering on retina/high-res displays
+            canvas.width = logicalWidth * dpr;
+            canvas.height = logicalHeight * dpr;
+            
+            // Style stays in logical CSS coordinates
+            canvas.style.width = logicalWidth + 'px';
+            canvas.style.height = logicalHeight + 'px';
+
+            // Reset and apply DPI scale multiplier
+            ctx.resetTransform();
+            ctx.scale(dpr, dpr);
+            
+            // Re-rasterize text whenever canvas changes scale
+            rasterizeText();
+        }
+
+        function rasterizeText() {
+            // Guard clause: Avoid IndexSizeError if width or height resolves to 0
+            if (logicalWidth <= 0 || logicalHeight <= 0) {
+                return;
+            }
+
+            const textVal = document.getElementById('userTextInput').value || "AETHER";
+            const fontSelect = document.getElementById('userTextFont').value;
+            const textScale = parseFloat(document.getElementById('textScale').value);
+            const precision = document.getElementById('spawnPrecision').value;
+
+            // Set size of hidden scan canvas safely (DPI independent)
+            textHiddenCanvas.width = logicalWidth;
+            textHiddenCanvas.height = logicalHeight;
+
+            hiddenCtx.clearRect(0, 0, textHiddenCanvas.width, textHiddenCanvas.height);
+            hiddenCtx.fillStyle = '#ffffff';
+            hiddenCtx.textAlign = 'center';
+            hiddenCtx.textBaseline = 'middle';
+
+            // Select Font Face
+            let fontFace = 'Inter';
+            if (fontSelect === 'cinzel') fontFace = 'Cinzel, serif';
+            else if (fontSelect === 'orbitron') fontFace = 'Orbitron, sans-serif';
+            else if (fontSelect === 'mono') fontFace = 'Fira Code, monospace';
+
+            // Calculate font size dynamically relative to screen size
+            const idealSize = Math.min(logicalWidth / (textVal.length * 0.7), logicalHeight * 0.4) * textScale;
+            hiddenCtx.font = `bold ${idealSize}px ${fontFace}`;
+
+            // Draw text to hidden canvas center
+            hiddenCtx.fillText(textVal, logicalWidth / 2, logicalHeight / 2);
+
+            // Fetch pixels securely
+            try {
+                const imgData = hiddenCtx.getImageData(0, 0, logicalWidth, logicalHeight);
+                const data = imgData.data;
+                textTargets = [];
+
+                // Choose scan steps based on user selection
+                let step = 10; 
+                if (precision === 'low') step = 14;
+                if (precision === 'high') step = 6;
+
+                // Scan pixels and collect targets
+                for (let y = 0; y < logicalHeight; y += step) {
+                    for (let x = 0; x < logicalWidth; x += step) {
+                        const index = (y * logicalWidth + x) * 4;
+                        const alpha = data[index + 3];
+                        if (alpha > 120) {
+                            textTargets.push({ x: x, y: y });
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Retrying typography rasterization due to initial size delay.", e);
+            }
+
+            // Fallback points if text has no targets (empty or failed read)
+            if (textTargets.length === 0) {
+                // Spawn target in circular mandala
+                for (let i = 0; i < 300; i++) {
+                    const angle = (i / 300) * Math.PI * 2;
+                    textTargets.push({
+                        x: logicalWidth / 2 + Math.cos(angle) * 150,
+                        y: logicalHeight / 2 + Math.sin(angle) * 150
+                    });
+                }
+            }
+
+            // Align or adjust particles size
+            adjustParticleArray();
+
+            // Refresh text characters for existing particles
+            particles.forEach(p => {
+                p.char = getRandomCharFromInput();
+            });
+        }
+
+        function createParticle(x, y) {
+            const colors = palettes[colorPalette];
+            return {
+                x: x !== undefined ? x : Math.random() * logicalWidth,
+                y: y !== undefined ? y : Math.random() * logicalHeight,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                size: Math.random() * 2.5 + 1.2, // Crisp legible sizing
+                color: colors[Math.floor(Math.random() * colors.length)],
+                alpha: Math.random() * 0.6 + 0.4,
+                targetIndex: Math.floor(Math.random() * textTargets.length),
+                angleOffset: Math.random() * Math.PI * 2,
+                orbitRadius: Math.random() * 20 + 5,
+                pulseSpeed: Math.random() * 0.05 + 0.01,
+                time: Math.random() * 100,
+                char: getRandomCharFromInput()
+            };
+        }
+
+        function adjustParticleArray() {
+            if (particles.length < particleCount) {
+                while (particles.length < particleCount) {
+                    particles.push(createParticle());
+                }
+            } else if (particles.length > particleCount) {
+                particles.splice(particleCount);
+            }
+            // Bind remaining particles to the target pool size
+            particles.forEach(p => {
+                if (p.targetIndex >= textTargets.length) {
+                    p.targetIndex = Math.floor(Math.random() * textTargets.length);
+                }
+            });
+            document.getElementById('particleCounter').innerText = particles.length.toLocaleString();
+        }
+
+        function forceScatter() {
+            particles.forEach(p => {
+                p.vx += (Math.random() - 0.5) * 50;
+                p.vy += (Math.random() - 0.5) * 50;
+            });
+            scatterTimer = 30; // frame decay trigger
+            showToast("Force Scattered Particles!");
+        }
+
+        function updatePhysicsAndRender() {
+            // Guard against context shadow blur bleed to guarantee complete crispness
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
+
+            // Setup drawing attributes
+            const decay = parseFloat(document.getElementById('trailDecay').value);
+            ctx.fillStyle = `rgba(0, 0, 0, ${decay})`;
+            ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+
+            // Configure rendering blends
+            ctx.globalCompositeOperation = document.getElementById('canvasBlend').value;
+
+            // Audio reactive elements
+            let soundLevelMultiplier = 1.0;
+            if (isAudioReactive && audioFrequencyData.length > 0) {
+                let sum = 0;
+                for (let i = 0; i < audioFrequencyData.length; i++) {
+                    sum += audioFrequencyData[i];
+                }
+                const avg = sum / audioFrequencyData.length;
+                audioVolume = avg / 255; // Normalized to 0-1
+                soundLevelMultiplier = 1.0 + (audioVolume * 2.5);
+            }
+
+            noiseFieldTime += 0.005 * flowSpeed;
+
+            // Determine rendering shape and typeface properties
+            const activeShape = document.getElementById('particleShape').value;
+            let fontFace = 'sans-serif';
+            const fontSelect = document.getElementById('userTextFont').value;
+            if (fontSelect === 'cinzel') fontFace = 'Cinzel, serif';
+            else if (fontSelect === 'orbitron') fontFace = 'Orbitron, sans-serif';
+            else if (fontSelect === 'mono') fontFace = 'Fira Code, monospace';
+
+            // Render logic with dynamic behaviors
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                p.time += 0.02 * flowSpeed;
+
+                // Dynamic target coordinates from custom text
+                let target = textTargets[p.targetIndex];
+                if (!target) {
+                    p.targetIndex = Math.floor(Math.random() * textTargets.length);
+                    target = textTargets[p.targetIndex];
+                }
+
+                let tx = target.x;
+                let ty = target.y;
+
+                // Custom script behavior options
+                if (customBehavior === 'flow') {
+                    // Wavy undulating text flow
+                    tx += Math.sin(p.time + p.angleOffset) * 20 * soundLevelMultiplier;
+                    ty += Math.cos(p.time * 0.8 + p.angleOffset) * 15 * soundLevelMultiplier;
+                } else if (customBehavior === 'vortex') {
+                    // Swirling orbits around text target points
+                    const currentAngle = p.time + p.angleOffset;
+                    tx += Math.cos(currentAngle) * p.orbitRadius * soundLevelMultiplier;
+                    ty += Math.sin(currentAngle) * p.orbitRadius * soundLevelMultiplier;
+                } else if (customBehavior === 'chaos') {
+                    // High-entropy dispersion path
+                    tx += Math.tan(Math.sin(p.time * 0.5)) * 40 * soundLevelMultiplier;
+                    ty += Math.cos(p.time * 1.5) * 30 * soundLevelMultiplier;
+                }
+
+                // Attraction Math
+                const dx = tx - p.x;
+                const dy = ty - p.y;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist > 1) {
+                    const ax = (dx / dist) * attractionForce * 0.1 * flowSpeed;
+                    const ay = (dy / dist) * attractionForce * 0.1 * flowSpeed;
+                    p.vx += ax;
+                    p.vy += ay;
+                }
+
+                // Mouse interaction physics deflection
+                if (mouseActive) {
+                    const mdx = p.x - mouseX;
+                    const mdy = p.y - mouseY;
+                    const mdist = Math.hypot(mdx, mdy);
+
+                    if (mdist < deflectionRadius) {
+                        const pushForce = (1.0 - mdist / deflectionRadius) * 4 * soundLevelMultiplier;
+                        p.vx += (mdx / mdist) * pushForce;
+                        p.vy += (mdy / mdist) * pushForce;
+                    }
+                }
+
+                // AI override hooks (custom user equations programmed by Gemini)
+                if (aiPhysicsOverride && typeof aiPhysicsOverride === 'function') {
+                    try {
+                        aiPhysicsOverride(p, tx, ty, soundLevelMultiplier, noiseFieldTime);
+                    } catch (e) {
+                        // Suppress issues, gracefully fallback
+                    }
+                }
+
+                // Drag and velocity friction limits
+                p.vx *= 0.92;
+                p.vy *= 0.92;
+
+                // Move
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Pulse sizing based on Audio volume levels
+                const drawSize = p.size * (1 + soundLevelMultiplier * 0.4);
+
+                // Axis mirroring / Mandala Symmetry Loop
+                renderParticleMirror(p, drawSize, activeShape, fontFace);
+            }
+
+            // Restore canvas normal blends
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        function drawShape(x, y, size, shape, char, fontFace) {
+            if (shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (shape === 'square') {
+                ctx.fillRect(x - size, y - size, size * 2, size * 2);
+            } else if (shape === 'triangle') {
+                ctx.beginPath();
+                ctx.moveTo(x, y - size * 1.2);
+                ctx.lineTo(x + size * 1.2, y + size * 0.8);
+                ctx.lineTo(x - size * 1.2, y + size * 0.8);
+                ctx.closePath();
+                ctx.fill();
+            } else if (shape === 'letter') {
+                // Large extra bold vector letters with absolute zero blur
+                ctx.font = `900 ${Math.max(10, Math.floor(size * 4.5))}px ${fontFace}`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(char || 'A', x, y);
+            } else if (shape === 'star') {
+                ctx.beginPath();
+                const spikes = 5;
+                const outerRadius = size * 1.5;
+                const innerRadius = size * 0.7;
+                let rot = Math.PI / 2 * 3;
+                let cx = x;
+                let cy = y;
+                let step = Math.PI / spikes;
+
+                ctx.moveTo(x, y - outerRadius);
+                for (let i = 0; i < spikes; i++) {
+                    cx = x + Math.cos(rot) * outerRadius;
+                    cy = y + Math.sin(rot) * outerRadius;
+                    ctx.lineTo(cx, cy);
+                    rot += step;
+
+                    cx = x + Math.cos(rot) * innerRadius;
+                    cy = y + Math.sin(rot) * innerRadius;
+                    ctx.lineTo(cx, cy);
+                    rot += step;
+                }
+                ctx.lineTo(x, y - outerRadius);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        function renderParticleMirror(p, size, shape, fontFace) {
+            if (activeSymmetry === 1) {
+                // Regular rendering
+                ctx.fillStyle = p.color;
+                drawShape(p.x, p.y, size, shape, p.char, fontFace);
+            } else {
+                // Mirror across center points
+                const cx = logicalWidth / 2;
+                const cy = logicalHeight / 2;
+                
+                const relativeX = p.x - cx;
+                const relativeY = p.y - cy;
+                const radius = Math.hypot(relativeX, relativeY);
+                const baseAngle = Math.atan2(relativeY, relativeX);
+
+                for (let i = 0; i < activeSymmetry; i++) {
+                    const angle = baseAngle + (i * (Math.PI * 2 / activeSymmetry));
+                    const drawX = cx + Math.cos(angle) * radius;
+                    const drawY = cy + Math.sin(angle) * radius;
+
+                    ctx.fillStyle = p.color;
+                    drawShape(drawX, drawY, size, shape, p.char, fontFace);
+                }
+            }
+        }
+
+        async function enableAudioAnalysis() {
+            if (isAudioReactive) {
+                // Disable
+                isAudioReactive = false;
+                document.getElementById('audioIcon').className = "fa-solid fa-microphone-slash text-zinc-500";
+                document.getElementById('audioText').innerText = "Mic: Off";
+                document.getElementById('btnAudio').classList.remove('bg-white', 'text-black');
+                showToast("Audio Reactivity Disabled");
+                return;
+            }
+
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                
+                audioAnalyser = audioContext.createAnalyser();
+                audioAnalyser.fftSize = 64; // High response, smaller frame spectrum
+                const bufferLength = audioAnalyser.frequencyBinCount;
+                audioFrequencyData = new Uint8Array(bufferLength);
+
+                microphoneSource = audioContext.createMediaStreamSource(stream);
+                microphoneSource.connect(audioAnalyser);
+
+                isAudioReactive = true;
+                document.getElementById('audioIcon').className = "fa-solid fa-microphone text-white animate-pulse";
+                document.getElementById('audioText').innerText = "Mic: Active";
+                document.getElementById('btnAudio').classList.add('bg-zinc-800', 'text-white');
+                showToast("Microphone Connected");
+            } catch (err) {
+                console.error("Audio capture failed:", err);
+                showToast("Error finding mic device");
+            }
+        }
+
+        function toggleRecording() {
+            if (isRecording) {
+                // Stop Recording
+                mediaRecorder.stop();
+                isRecording = false;
+
+                // Stop UI timers & indicators
+                document.getElementById('recordIndicator').style.display = 'none';
+
+                // Restore Button Looks
+                const btn = document.getElementById('btnRecord');
+                document.getElementById('recordText').innerText = "Record";
+                document.getElementById('recordIcon').className = "fa-solid fa-circle text-[8px] text-zinc-400";
+                btn.classList.remove('bg-rose-950/40', 'border-rose-500');
+
+                showToast("Compiling video download...");
+            } else {
+                // Start WebM Video Capturing with fallback codecs
+                recordedChunks = [];
+                const stream = canvas.captureStream(30); 
+
+                let selectedMime = 'video/webm;codecs=vp9';
+                if (!MediaRecorder.isTypeSupported(selectedMime)) {
+                    selectedMime = 'video/webm;codecs=vp8';
+                }
+                if (!MediaRecorder.isTypeSupported(selectedMime)) {
+                    selectedMime = 'video/webm';
+                }
+                if (!MediaRecorder.isTypeSupported(selectedMime)) {
+                    selectedMime = 'video/mp4'; // Safari fallback
+                }
+                if (!MediaRecorder.isTypeSupported(selectedMime)) {
+                    selectedMime = ''; // System default
+                }
+
+                try {
+                    const options = selectedMime ? { mimeType: selectedMime } : {};
+                    mediaRecorder = new MediaRecorder(stream, options);
+                } catch (e) {
+                    console.error("Failed to construct MediaRecorder:", e);
+                    showToast("Exporters not fully supported.");
+                    return;
+                }
+                
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data && e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blobMime = selectedMime || 'video/webm';
+                    const blob = new Blob(recordedChunks, { type: blobMime });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const extension = blobMime.includes('mp4') ? 'mp4' : 'webm';
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `AetherFlow-Art-${Date.now()}.${extension}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    showToast("Video Download Initiated");
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+
+                document.getElementById('recordIndicator').style.display = 'inline-flex';
+
+                // Update Button
+                const btn = document.getElementById('btnRecord');
+                document.getElementById('recordText').innerText = "Stop";
+                document.getElementById('recordIcon').className = "fa-solid fa-square text-[8px] text-rose-500";
+                btn.classList.add('bg-rose-950/40', 'border-rose-500');
+
+                showToast("Recording started");
+            }
+        }
+
+        function capturePngSnapshot() {
+            // Temporary high-quality repaint with black background
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0,0, logicalWidth, logicalHeight);
+            updatePhysicsAndRender();
+
+            const imageURI = canvas.toDataURL("image/png");
+            const link = document.createElement('a');
+            link.download = `AetherFlow-Art-${Date.now()}.png`;
+            link.href = imageURI;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("PNG Art Saved!");
+        }
+
+        async function runGeminiCoreGeneration() {
+            const userPrompt = document.getElementById('promptInput').value.trim();
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const customText = document.getElementById('userTextInput').value || "AETHER";
+
+            if (!userPrompt) {
+                showToast("Please write a pattern prompt first!");
+                return;
+            }
+
+            const btn = document.getElementById('btnGenerate');
+            const genText = document.getElementById('genText');
+            const genIcon = document.getElementById('genIcon');
+            
+            btn.disabled = true;
+            genText.innerText = "Processing Core...";
+            genIcon.className = "fa-solid fa-circle-notch animate-spin text-[10px]";
+
+            const systemPrompt = `
+You are a highly advanced mathematical visual generative artist sandbox developer. Your goal is to write custom vector particle physics algorithms based on user queries, optimized specifically to run in HTML5 Canvas.
+
+You must reply with a valid JSON block containing:
+1. "title": A matching beautiful artistic title for the prompt.
+2. "description": A concise artistic description of what math or particle kinetics is being run.
+3. "palette": One of the string names representing our canvas palette core: 'white', 'neon', 'gold', 'matrix', or 'sunset'.
+4. "customBehavior": One of our preset motion fields matching user mood: 'magnet', 'flow', 'vortex', 'chaos'.
+5. "particles": Suggested integer count of particles between 500 and 3000.
+6. "code": A brief, optimized Javascript mathematical snippet that will execute inside our update loop for every particle. 
+   Inside this JavaScript string, you will mutate the particle's properties based on equations.
+   Variables available for use:
+   - p.x, p.y (particle positions)
+   - p.vx, p.vy (particle velocities)
+   - p.size (size)
+   - p.color (current active color)
+   - p.alpha (transparency)
+   - p.time (running clock timer)
+   - p.angleOffset (original angle)
+   - tx, ty (coordinates of the custom text targeted points: "${customText}")
+   - soundLevel (microphone reactive multiplier, usually between 1.0 and 4.0 depending on volume)
+   - noiseTime (continuously incrementing noise value)
+
+IMPORTANT: The Javascript string in "code" should be ONLY the inner formula math, written safely.
+Example valid formula string for code block:
+"p.vx += Math.cos(p.time * 2 + p.angleOffset) * 0.15 * soundLevel; p.vy += Math.sin(p.time * 2 + p.angleOffset) * 0.15 * soundLevel;"
+
+Return ONLY structured JSON conforming precisely to this format. Do not write text outside the JSON output block.
+`;
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{
+                    parts: [{ text: `Generate animation code for the prompt: "${userPrompt}" utilizing the custom text word "${customText}"` }]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            title: { type: "STRING" },
+                            description: { type: "STRING" },
+                            palette: { type: "STRING" },
+                            customBehavior: { type: "STRING" },
+                            particles: { type: "NUMBER" },
+                            code: { type: "STRING" }
+                        },
+                        required: ["title", "description", "palette", "customBehavior", "particles", "code"]
+                    }
+                },
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error("Integrated API response failed. Please provide your own Gemini API key for reliable high-speed sandbox generations.");
+                }
+
+                const data = await response.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (text) {
+                    const parsed = JSON.parse(text);
+                    applyAIPattern(parsed);
+                } else {
+                    throw new Error("Malformed payload returned from Gemini model.");
+                }
+
+            } catch (err) {
+                console.error("Gemini Generation Error:", err);
+                showToast("Fallback Algorithm Loaded");
+                applyAIFallbackPattern(userPrompt);
+            } finally {
+                btn.disabled = false;
+                genText.innerText = "Generate Pattern";
+                genIcon.className = "fa-solid fa-wand-magic-sparkles text-[10px]";
+            }
+        }
+
+        function applyAIPattern(parsed) {
+            document.getElementById('statusTitle').innerText = parsed.title || "Custom AI Dynamic Flow";
+            document.getElementById('statusDesc').innerText = parsed.description || "Synthesized using generative neural math.";
+            document.getElementById('statusCategory').innerText = "AI Generated";
+
+            if (parsed.palette && palettes[parsed.palette]) {
+                colorPalette = parsed.palette;
+                document.querySelectorAll('.palette-btn').forEach(b => {
+                    if (b.dataset.palette === colorPalette) {
+                        b.className = "palette-btn py-1.5 px-2.5 rounded-lg text-[10px] font-medium border border-white bg-zinc-900 text-white text-left flex items-center space-x-2";
+                    } else {
+                        b.className = "palette-btn py-1.5 px-2.5 rounded-lg text-[10px] font-medium border border-zinc-800 bg-transparent hover:border-zinc-700 text-zinc-400 text-left flex items-center space-x-2";
+                    }
+                });
+            }
+
+            if (parsed.customBehavior) {
+                customBehavior = parsed.customBehavior;
+                document.getElementById('userTextBehavior').value = customBehavior;
+            }
+
+            if (parsed.particles) {
+                particleCount = Math.min(Math.max(parsed.particles, 200), 4000);
+                document.getElementById('paramCount').value = particleCount;
+                document.getElementById('lblCount').innerText = particleCount;
+            }
+
+            if (parsed.code) {
+                try {
+                    aiPhysicsOverride = new Function('p', 'tx', 'ty', 'soundLevel', 'noiseTime', parsed.code);
+                    document.getElementById('compiledCodeBlock').innerText = parsed.code;
+                    document.getElementById('aiFeedback').classList.remove('hidden');
+                } catch (compileErr) {
+                    console.error("AI Code Compilation Error:", compileErr);
+                }
+            }
+
+            rasterizeText();
+            showToast("Gemini Art Synthesis Complete!");
+        }
+
+        function applyAIFallbackPattern(prompt) {
+            const promptLower = prompt.toLowerCase();
+            let mockData = {
+                title: "Ethereal Flow Wave",
+                description: "Harmonious sine wave particles drifting on magnetic coordinate grids.",
+                palette: "white",
+                customBehavior: "flow",
+                particles: 1800,
+                code: "p.vx += Math.sin(p.time * 1.5) * 0.1 * soundLevel; p.vy += Math.cos(p.time * 0.8) * 0.08 * soundLevel;"
+            };
+
+            if (promptLower.includes('matrix') || promptLower.includes('code') || promptLower.includes('cyber')) {
+                mockData = {
+                    title: "System Matrix Rain",
+                    description: "High-speed cybernetic vectors dropping down the custom typeface path.",
+                    palette: "matrix",
+                    customBehavior: "chaos",
+                    particles: 2200,
+                    code: "p.vy += 0.25 * soundLevel; if(p.y > logicalHeight) { p.y = 0; p.x = Math.random() * logicalWidth; p.vy = 1; }"
+                };
+            } else if (promptLower.includes('vortex') || promptLower.includes('fire') || promptLower.includes('orbit')) {
+                mockData = {
+                    title: "Cosmic Gravity Abyss",
+                    description: "Deep gravitational particle compression swirling into circular orbits.",
+                    palette: "gold",
+                    customBehavior: "vortex",
+                    particles: 1500,
+                    code: "const theta = p.time * 2 + p.angleOffset; p.vx += Math.cos(theta) * 0.18 * soundLevel; p.vy += Math.sin(theta) * 0.18 * soundLevel;"
+                };
+            }
+
+            applyAIPattern(mockData);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toastMessage');
+            document.getElementById('toastText').innerText = msg;
+            toast.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 3000);
+        }
+
+        function setupFontUploader() {
+            const fontInput = document.getElementById('fontFileInput');
+            const fontBtnText = document.getElementById('fontUploadBtnText');
+            
+            fontInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                fontBtnText.innerText = "Compiling typeface...";
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const arrayBuffer = event.target.result;
+                    const customFontFamily = 'DynamicUploadedFont_' + Date.now();
+                    const customFont = new FontFace(customFontFamily, arrayBuffer);
+                    
+                    customFont.load().then(function(loadedFont) {
+                        document.fonts.add(loadedFont);
+                        
+                        const select = document.getElementById('userTextFont');
+                        const option = document.createElement('option');
+                        option.value = customFontFamily;
+                        option.text = (file.name.length > 20 ? (file.name.substring(0, 17) + "...") : file.name) + " (Custom)";
+                        option.selected = true;
+                        select.appendChild(option);
+
+                        fontBtnText.innerText = file.name;
+                        showToast(`Typeface Active: ${file.name}`);
+                        rasterizeText();
+                    }).catch(function(err) {
+                        console.error("Font compilation failure:", err);
+                        fontBtnText.innerText = "Failed loading font";
+                        showToast("Please use standard .ttf or .otf files.");
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function setupUIListeners() {
+            setupFontUploader();
+
+            const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+            const sidebar = document.getElementById('controlSidebar');
+            const sidebarToggleIcon = document.getElementById('sidebarToggleIcon');
+            const sidebarToggleText = document.getElementById('sidebarToggleText');
+
+            btnToggleSidebar.addEventListener('click', () => {
+                isSidebarCollapsed = !isSidebarCollapsed;
+                if (isSidebarCollapsed) {
+                    sidebar.style.width = '0px';
+                    sidebar.style.borderWidth = '0px';
+                    sidebar.style.opacity = '0';
+                    sidebar.style.pointerEvents = 'none';
+                    sidebarToggleText.innerText = "Show Panel";
+                    sidebarToggleIcon.className = "fa-solid fa-bars";
+                    showToast("Panel Hidden");
+                } else {
+                    sidebar.style.width = '';
+                    sidebar.style.borderWidth = '';
+                    sidebar.style.opacity = '1';
+                    sidebar.style.pointerEvents = '';
+                    sidebarToggleText.innerText = "Hide Panel";
+                    sidebarToggleIcon.className = "fa-solid fa-bars-staggered";
+                    showToast("Panel Restored");
+                }
+
+                // Recalculate layout widths smoothly
+                let stepCount = 0;
+                const resizeInterval = setInterval(() => {
+                    initCanvasSize();
+                    stepCount++;
+                    if (stepCount >= 18) { 
+                        clearInterval(resizeInterval);
+                    }
+                }, 20);
+            });
+
+            // Tab Toggles
+            const tabManual = document.getElementById('tabManual');
+            const tabAI = document.getElementById('tabAI');
+            const panelManual = document.getElementById('panelManual');
+            const panelAI = document.getElementById('panelAI');
+
+            tabManual.addEventListener('click', () => {
+                tabManual.className = "flex-1 py-3 px-4 text-[10px] font-semibold uppercase tracking-widest border-b border-white text-white transition-all-custom flex items-center justify-center space-x-2";
+                tabAI.className = "flex-1 py-3 px-4 text-[10px] font-semibold uppercase tracking-widest border-b border-transparent text-zinc-500 hover:text-zinc-300 transition-all-custom flex items-center justify-center space-x-2";
+                panelManual.classList.remove('hidden-panel', 'hidden');
+                panelAI.classList.add('hidden-panel', 'hidden');
+            });
+
+            tabAI.addEventListener('click', () => {
+                tabAI.className = "flex-1 py-3 px-4 text-[10px] font-semibold uppercase tracking-widest border-b border-white text-white transition-all-custom flex items-center justify-center space-x-2";
+                tabManual.className = "flex-1 py-3 px-4 text-[10px] font-semibold uppercase tracking-widest border-b border-transparent text-zinc-500 hover:text-zinc-300 transition-all-custom flex items-center justify-center space-x-2";
+                panelAI.classList.remove('hidden-panel', 'hidden');
+                panelManual.classList.add('hidden-panel', 'hidden');
+            });
+
+            // Color Palette Selector
+            document.querySelectorAll('.palette-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const el = e.currentTarget;
+                    colorPalette = el.dataset.palette;
+                    document.querySelectorAll('.palette-btn').forEach(b => {
+                        b.className = "palette-btn py-1.5 px-2.5 rounded-lg text-[10px] font-medium border border-zinc-800 bg-transparent hover:border-zinc-700 text-zinc-400 text-left flex items-center space-x-2";
+                    });
+                    el.className = "palette-btn py-1.5 px-2.5 rounded-lg text-[10px] font-medium border border-white bg-zinc-900 text-white text-left flex items-center space-x-2";
+                    
+                    const colors = palettes[colorPalette];
+                    particles.forEach(p => {
+                        p.color = colors[Math.floor(Math.random() * colors.length)];
+                    });
+                    showToast(`Palette: ${colorPalette.toUpperCase()}`);
+                });
+            });
+
+            // Particle Shape Selector Trigger
+            document.getElementById('particleShape').addEventListener('change', (e) => {
+                showToast(`Shape: ${e.target.value.toUpperCase()}`);
+            });
+
+            // Symmetry Multiplier Axes
+            document.querySelectorAll('.sym-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const el = e.currentTarget;
+                    activeSymmetry = parseInt(el.dataset.sym);
+                    document.querySelectorAll('.sym-btn').forEach(b => {
+                        b.className = "sym-btn py-1 px-1.5 rounded-full text-[9px] bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-800";
+                    });
+                    el.className = "sym-btn py-1 px-1.5 rounded-full text-[9px] bg-zinc-200 text-black font-semibold";
+                    
+                    const labelText = activeSymmetry === 1 ? 'None' : `${activeSymmetry}x Axial`;
+                    document.getElementById('lblSymmetry').innerText = labelText;
+                    showToast(`Symmetry: ${labelText}`);
+                });
+            });
+
+            // Quick Prompt button fills
+            document.querySelectorAll('.quick-prompt-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.getElementById('promptInput').value = e.target.innerText.trim();
+                });
+            });
+
+            // Custom user text triggers
+            document.getElementById('userTextInput').addEventListener('input', () => {
+                rasterizeText();
+            });
+            document.getElementById('userTextFont').addEventListener('change', () => {
+                rasterizeText();
+            });
+            document.getElementById('userTextBehavior').addEventListener('change', (e) => {
+                customBehavior = e.target.value;
+                showToast(`Behavior: ${customBehavior.toUpperCase()}`);
+            });
+            document.getElementById('textScale').addEventListener('input', () => {
+                rasterizeText();
+            });
+            document.getElementById('spawnPrecision').addEventListener('change', () => {
+                rasterizeText();
+            });
+
+            // Physics Parameter adjustment sliders
+            document.getElementById('paramCount').addEventListener('input', (e) => {
+                particleCount = parseInt(e.target.value);
+                document.getElementById('lblCount').innerText = particleCount;
+                adjustParticleArray();
+            });
+            document.getElementById('paramSpeed').addEventListener('input', (e) => {
+                flowSpeed = parseFloat(e.target.value);
+                document.getElementById('lblSpeed').innerText = `${flowSpeed}x`;
+            });
+            document.getElementById('paramForce').addEventListener('input', (e) => {
+                attractionForce = parseFloat(e.target.value);
+                document.getElementById('lblForce').innerText = attractionForce;
+            });
+            document.getElementById('paramDeflect').addEventListener('input', (e) => {
+                deflectionRadius = parseInt(e.target.value);
+                document.getElementById('lblDeflect').innerText = `${deflectionRadius}px`;
+            });
+
+            // Core Playback Toolbar Trigger Actions
+            document.getElementById('btnPlayPause').addEventListener('click', () => {
+                isPlaying = !isPlaying;
+                const icon = document.getElementById('playPauseIcon');
+                if (isPlaying) {
+                    icon.className = "fa-solid fa-pause text-[10px]";
+                    showToast("Resumed");
+                } else {
+                    icon.className = "fa-solid fa-play text-[10px]";
+                    showToast("Paused");
+                }
+            });
+
+            document.getElementById('btnClearCanvas').addEventListener('click', () => {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+                showToast("Canvas Trails Reset!");
+            });
+
+            document.getElementById('btnResetPhysics').addEventListener('click', () => {
+                forceScatter();
+            });
+
+            // Apple Presentation View: Virtual Display Fullscreen Switcher
+            document.getElementById('btnToggleFull').addEventListener('click', () => {
+                const container = document.getElementById('canvasContainer');
+                const icon = document.getElementById('fullIcon');
+                isVirtualFullscreen = !isVirtualFullscreen;
+                
+                if (isVirtualFullscreen) {
+                    container.classList.add('virtual-fullscreen-active');
+                    icon.className = "fa-solid fa-compress text-[10px]";
+                    showToast("Presentation Mode Engaged");
+                } else {
+                    container.classList.remove('virtual-fullscreen-active');
+                    icon.className = "fa-solid fa-expand text-[10px]";
+                    showToast("Presentation Mode Disengaged");
+                }
+                
+                initCanvasSize();
+            });
+
+            // Exit virtual fullscreen mode when Esc key is pressed
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && isVirtualFullscreen) {
+                    const container = document.getElementById('canvasContainer');
+                    const icon = document.getElementById('fullIcon');
+                    isVirtualFullscreen = false;
+                    container.classList.remove('virtual-fullscreen-active');
+                    icon.className = "fa-solid fa-expand text-[10px]";
+                    initCanvasSize();
+                    showToast("Presentation Mode Disengaged");
+                }
+            });
+
+            // Utility buttons
+            document.getElementById('btnAudio').addEventListener('click', () => {
+                enableAudioAnalysis();
+            });
+            document.getElementById('btnSnapshot').addEventListener('click', () => {
+                capturePngSnapshot();
+            });
+            document.getElementById('btnRecord').addEventListener('click', () => {
+                toggleRecording();
+            });
+            document.getElementById('btnGenerate').addEventListener('click', () => {
+                runGeminiCoreGeneration();
+            });
+
+            // Mouse Deflection Event Coordinates
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.clientX - rect.left;
+                mouseY = e.clientY - rect.top;
+                mouseActive = true;
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                mouseActive = false;
+                mouseX = -9999;
+                mouseY = -9999;
+            });
+
+            canvas.addEventListener('mousedown', (e) => {
+                forceScatter();
+            });
+
+            // Handle browser resize gracefully
+            window.addEventListener('resize', () => {
+                initCanvasSize();
+            });
+        }
+
+        function tickAnimationLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const delta = timestamp - lastTime;
+            lastTime = timestamp;
+
+            // Frame Rate Counter Calculation
+            fps = Math.round(1000 / delta);
+            if (fps && isFinite(fps)) {
+                document.getElementById('fpsCounter').innerText = fps;
+            }
+
+            // Run update frame ticks
+            if (isPlaying) {
+                updatePhysicsAndRender();
+            }
+
+            requestAnimationFrame(tickAnimationLoop);
+        }
+
+        window.onload = function() {
+            // First sizing attempt
+            initCanvasSize();
+            
+            // Build interactive layout listeners
+            setupUIListeners();
+
+            // Populate starting particles
+            adjustParticleArray();
+
+            // Run animation
+            requestAnimationFrame(tickAnimationLoop);
+            
+            // Delayed sizing adjustment to catch slow browser layout flows/CSS renderings
+            setTimeout(() => {
+                initCanvasSize();
+            }, 150);
+            
+            showToast("Workspace Loaded");
+        };
+    </script>
+</body>
+</html>
